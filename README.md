@@ -35,11 +35,14 @@ Esto es útil si no tienes Python 3.11.9 instalado globalmente o quieres mantene
 
 ```bash
 # Crear un entorno virtual (requiere tener Python 3.11.9 instalado)
-python3.11 -m venv .venv
+python -m venv .venv_p311
+
+py -3.11 -m venv .venv
+
 
 # Activar el entorno virtual
 # En Windows:
-.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 # En macOS/Linux:
 source .venv/bin/activate
 ```
