@@ -1,0 +1,12 @@
+PySide6
+pytesseract
+argostranslate
+mss
+keyboard
+pyttsx3
+pyperclip
+python-docx
+
+pyautogui
+screeninfo
+pillow
