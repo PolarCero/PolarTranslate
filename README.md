@@ -73,6 +73,32 @@ python main.py
 
 > ✅ Asegúrate de tener **Python 3.11.9** instalado o usar un entorno virtual con esa versión.
 
+### ℹ️ Activación del entorno virtual en Windows
+
+Si estás en Windows y usas PowerShell, activa el entorno virtual con:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+#### ⚠️ ¿Ves un error como este?
+
+```text
+.\.venv\Scripts\Activate.ps1 : File ... is not digitally signed. 
+You cannot run this script on the current system.
+```
+
+Significa que tu política de ejecución de scripts está deshabilitada. Puedes permitirlo temporalmente con este comando:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```
+
+Esto cambiará la política **solo durante la sesión actual**, sin afectar la seguridad general del sistema. Luego intenta de nuevo:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
 ## Licencia
 Este proyecto está licenciado bajo la AGPL-3.0.
