@@ -28,7 +28,7 @@ cd PolarTranslate
 ```
 
 ### 2. (Opcional pero recomendado) Usa un entorno virtual de Python
-
+https://www.python.org/downloads/release/python-3119/
 Esto es útil si no tienes Python 3.11.9 instalado globalmente o quieres mantener dependencias aisladas:
 
 ```bash
