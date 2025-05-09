@@ -54,7 +54,7 @@ pip install -r requirements.txt
 ```
 
 ### 4. Instala Tesseract-OCR (requerido para funciones OCR)
-
+(Release)
 🔗 https://github.com/tesseract-ocr/tesseract
 
 Asegúrate de que el ejecutable `tesseract` esté en tu variable de entorno `PATH`.
