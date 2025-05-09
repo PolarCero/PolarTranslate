@@ -20,11 +20,11 @@ Free and Open Source Translator. Works locally, offline, and requires no server.
 
 ## ⚙️ Instalación
 
-1. Clona este repositorio:
+1. Clona o Descarga el repositorio:
 
 ```bash
-git clone https://github.com/tuusuario/polar-translator.git
-cd polar-translator
+git clone https://github.com/PolarCero/PolarTranslate.git
+cd PolarTranslate
 ```
 
 2. Instala los requisitos:
@@ -32,6 +32,16 @@ cd polar-translator
 ```bash
 pip install -r requirements.txt
 ```
+
+instala tesseract-ocr
+https://github.com/tesseract-ocr/tesseract
+
+3. Instala los modelos:
+
+```bash
+python install_models.py
+```
+
 
 Ejecuta la aplicación:
 
