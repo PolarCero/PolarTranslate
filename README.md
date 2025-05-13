@@ -1,76 +1,103 @@
 # PolarTranslate
+
 Free and Open Source Translator. Works locally, offline, and requires no server.
 
-**Polar Translate** es una aplicación de traducción local que utiliza los modelos de Argos Translate para ofrecer traducción offline, rápida y privada, sin depender de servidores externos.
+[English](README.md) | [Español](README.es.md)
+
+**Polar Translate** is a local desktop translation application that uses Argos Translate models to provide offline, fast, and private translation, without relying on external servers.
 
 ---
 
-## Características
+## Features
 
-- Traducción completamente offline utilizando modelos de Argos Translate.
-- Basado en modelos *open source*.
-- Código *open source* con licencia **AGPL-3.0**.
-- Funcionalidades de OCR (Reconocimiento Óptico de Caracteres) desde imágenes y captura de pantalla.
-- Gestión de paquetes de idioma de Argos Translate (instalación/desinstalación) desde la interfaz de usuario.
-
----
-
-## Requisitos
-
-- Python 3.11.9 (Recomendado, no superior)
-- **Tesseract OCR Engine** (Software externo para OCR)
+* Completely offline translation using Argos Translate models.
+* Based on *open source* models.
+* *Open source* code under the **AGPL-3.0** license.
+* OCR (Optical Character Recognition) functionalities from images and screen capture.
+* Management of Argos Translate language packages (installation/uninstallation) from the user interface.
 
 ---
 
-## 🚀 Ejecutar desde Código Fuente
+## Requirements
 
-Sigue estos pasos si deseas clonar el repositorio y ejecutar la aplicación directamente desde el código fuente en tu máquina.
-
-👉 Para obtener instrucciones detalladas sobre cómo configurar tu entorno, instalar dependencias y ejecutar la aplicación desde el código fuente, consulta nuestra [**Guía Completa para Ejecutar desde Código Fuente**](docs/RUNNING_FROM_SOURCE.md).
-
----
-
-## 📦 Usar el Ejecutable (Release)
-
-Si solo quieres usar la aplicación sin instalar Python ni gestionar dependencias, **descarga el ejecutable precompilado** desde las *Releases* de GitHub.
-
-### 1. Descarga el Ejecutable
-
-- Ve a la página de Releases del repositorio:  
-  [https://github.com/PolarCero/PolarTranslate/releases](https://github.com/PolarCero/PolarTranslate/releases)  
-  *(Reemplaza PolarCero/PolarTranslate con la ruta real de tu repositorio si es diferente).*
-- Busca la última Release (por ejemplo, `v0.1.0`).
-- En la sección **"Assets"** de la Release, descarga el archivo `PolarTranslate.exe`.
-
-### 2. Guarda el Ejecutable
-
-Guarda el archivo `PolarTranslate.exe` en una carpeta de tu elección en tu computadora (por ejemplo, en tu carpeta de Descargas o crea una carpeta específica para la aplicación).
-
-### 3. Instala Tesseract-OCR (requerido para funciones OCR)
-
-Este paso es el mismo que para ejecutar desde código fuente y es **OBLIGATORIO** para las funciones de OCR.
-
-- Descarga el instalador de Tesseract OCR desde el sitio web oficial:  
-  [https://tesseract-ocr.github.io/](https://tesseract-ocr.github.io/)
-- Sigue las instrucciones de instalación para tu sistema operativo.
-- Asegúrate de que el ejecutable `tesseract` esté en el **PATH** de tu sistema.
-
-### 4. Ejecuta la Aplicación
-
-Simplemente haz doble clic en el archivo `PolarTranslate.exe` que descargaste.
-
-> **Nota sobre Paquetes de Idioma:**  
-> Los paquetes de idioma de Argos Translate se gestionan directamente desde la ventana de **Configuración** dentro de la aplicación.  
-> La primera vez que la ejecutes, es posible que solo tengas los idiomas base instalados.  
-> Ve a `Configuración -> Idiomas y Paquetes` para instalar los idiomas que necesites.  
-> La aplicación te pedirá que la cierres y vuelvas a abrir después de instalar/desinstalar paquetes para que los cambios surtan efecto.
+* Python 3.11.9 (Recommended, not higher)
+* **Tesseract OCR Engine** (External software for OCR)
 
 ---
 
-## Licencia
-Este proyecto está licenciado bajo la **AGPL-3.0**.
+## 🚀 Run from Source Code
 
-Los modelos de traducción son provistos por **Argos Translate** y están licenciados bajo **MIT**. Se agradece y reconoce su gran trabajo.
+Follow these steps if you want to clone the repository and run the application directly from the source code on your machine.
 
-> Si usas este proyecto o haces algo derivado, por favor menciona el proyecto original.  
-> Toda contribución y fork debe mantenerse también open source, bajo los términos de la licencia AGPL.
+👉 For detailed instructions on how to set up your environment, install dependencies, and run the application from source code, check out our [**Complete Guide to Running from Source Code**](docs/RUNNING_FROM_SOURCE.md).
+
+---
+
+## 📦 Use the Executable (Release)
+
+If you just want to use the application without installing Python or managing dependencies, **download the pre-compiled executable** from the GitHub *Releases*.
+
+### 1. Download the Executable
+
+- Go to the repository's Releases page:
+  [https://github.com/PolarCero/PolarTranslate/releases](https://github.com/PolarCero/PolarTranslate/releases)
+  *(Replace PolarCero/PolarTranslate with your actual repository path if different).*
+- Find the latest Release (e.g., `v0.1.0`).
+- In the **"Assets"** section of the Release, download the `PolarTranslate.exe` file.
+
+### 2. Save the Executable
+
+Save the `PolarTranslate.exe` file to a folder of your choice on your computer (e.g., in your Downloads folder or create a specific folder for the application).
+
+### 3. Install Tesseract-OCR (required for OCR features)
+
+This step is the same as for running from source code and is **MANDATORY** for OCR features.
+
+- Download the Tesseract OCR installer from the official website:
+  [https://tesseract-ocr.github.io/](https://tesseract-ocr.github.io/)
+- Follow the installation instructions for your operating system.
+- Make sure the `tesseract` executable is in your system's **PATH**.
+
+### 4. Run the Application
+
+Simply double-click the `PolarTranslate.exe` file you downloaded.
+
+> **Note on Language Packages:**
+> Argos Translate language packages are managed directly from the **Configuration** window within the application.
+> The first time you run it, you might only have the base languages installed.
+> Go to `Configuration -> Languages and Packages` to install the languages you need.
+> The application will ask you to close and reopen it after installing/uninstalling packages for the changes to take effect.
+
+---
+
+## 🔜 Upcoming Features
+
+We are working on improving Polar Translate and adding new functionalities. Some of the planned features include:
+
+* **Advanced Configuration:** Complete interface to manage Tesseract path, custom hotkeys, and other application options.
+
+* **Text-to-Speech (TTS):** Functionality to read translated text aloud.
+
+* **OCR Improvements:** Ability to select more precise text areas in screen capture, support for more image formats.
+
+* **Improved Clipboard Integration:** Optional automatic detection of clipboard changes.
+
+* **Multi-platform Support:** Packaging and testing for macOS and Linux.
+
+* **Full Installer:** An installer (e.g., .msi for Windows) that can automatically manage the installation of Tesseract OCR (optionally).
+
+* **UI/UX Improvements:** Refinements to the user interface for a smoother experience.
+
+---
+
+## License
+This project is licensed under the **AGPL-3.0**.
+
+Translation models are provided by **Argos Translate** and are licensed under **MIT**. Their great work is appreciated and acknowledged.
+
+> If you use this project or create a derivative work, please mention the original project.
+> All contributions and forks must also remain open source, under the terms of the AGPL license.
+
+## Report Bugs and Suggestions
+If you find any bugs, have suggestions for improvement, or want to request a new feature, please open an issue in the repository's Issues section.
+[Report Bugs and Suggestions](https://github.com/PolarCero/PolarTranslate/issues)

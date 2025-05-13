@@ -1,8 +1,6 @@
-# Polar Translate - https://github.com/PolarCero
-# Author: David Pollard / PolarCero
-# License: AGPL-3.0
 # main.py
 import sys
+import os # Importar os para manejar rutas de archivos
 
 # Importar las clases necesarias de las diferentes capas
 from src.ui.main_window import MainWindow
@@ -11,9 +9,9 @@ from src.infrastructure.argos_translator import ArgosTranslator
 from src.infrastructure.system_hotkey_manager import SystemHotkeyManager
 from src.infrastructure.pytesseract_ocr import PytesseractOCRService
 
-# Importar QApplication de PySide6 para iniciar la aplicación GUI
+# Importar QApplication y QTranslator de PySide6 para la localización
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QTranslator, QLocale # Importar QTranslator y QLocale
 
 # Importar modelos del dominio para la llamada de prueba
 from src.domain.models import TranslationRequest, Language
@@ -26,6 +24,60 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     print("main.py: Instancia de QApplication creada.")
 
+    # --- Configuración de Localización ---
+    # Crear una instancia de QTranslator
+    translator = QTranslator(app)
+
+    # Determinar el idioma a cargar. Por ahora, cargaremos 'en' (inglés) si existe.
+    # En una versión futura (Fase 6), esto podría basarse en la configuración del usuario
+    # o la configuración regional del sistema.
+    locale = QLocale.system().name() # Obtener la configuración regional del sistema (ej: "en_US", "es_ES")
+    lang_code = locale.split('_')[0] # Obtener solo el código de idioma (ej: "en", "es")
+
+    # Intentar cargar el archivo de traducción para el idioma detectado (si no es inglés)
+    # O cargar inglés si el idioma del sistema no es inglés.
+    # Los archivos .qm se guardarán en una carpeta 'i18n' en la raíz del proyecto.
+    # El nombre del archivo .qm debe seguir el patrón <nombre_app>_<código_idioma>.qm
+    # Por ejemplo: PolarTranslate_en.qm, PolarTranslate_es.qm
+
+    # Ruta esperada del archivo .qm para el idioma del sistema
+    qm_file_system = f"i18n/PolarTranslate_{lang_code}.qm"
+    # Ruta esperada del archivo .qm para inglés (por defecto si el sistema no es inglés)
+    qm_file_english = "i18n/PolarTranslate_en.qm"
+
+
+    if lang_code != "en" and os.path.exists(qm_file_system):
+        # Si el idioma del sistema no es inglés y existe un archivo .qm para ese idioma
+        print(f"main.py: Intentando cargar archivo de traducción para idioma del sistema: {qm_file_system}")
+        if translator.load(qm_file_system):
+            app.installTranslator(translator)
+            print(f"main.py: Archivo de traducción {qm_file_system} cargado exitosamente.")
+        else:
+            print(f"main.py: Advertencia: No se pudo cargar el archivo de traducción: {qm_file_system}")
+            print("main.py: La aplicación se ejecutará en inglés.")
+            # Intentar cargar el archivo de inglés si falla el del sistema
+            if os.path.exists(qm_file_english) and translator.load(qm_file_english):
+                 app.installTranslator(translator)
+                 print(f"main.py: Archivo de traducción {qm_file_english} cargado como fallback.")
+            else:
+                 print(f"main.py: Advertencia: No se pudo cargar el archivo de traducción de inglés: {qm_file_english}")
+
+    elif os.path.exists(qm_file_english):
+        # Si el idioma del sistema es inglés o no se encontró el archivo del sistema, intentar cargar inglés
+        print(f"main.py: Intentando cargar archivo de traducción de inglés: {qm_file_english}")
+        if translator.load(qm_file_english):
+            app.installTranslator(translator)
+            print(f"main.py: Archivo de traducción {qm_file_english} cargado exitosamente.")
+        else:
+            print(f"main.py: Advertencia: No se pudo cargar el archivo de traducción de inglés: {qm_file_english}")
+            print("main.py: La aplicación se ejecutará sin traducción (probablemente en inglés por defecto).")
+    else:
+        print("main.py: No se encontraron archivos de traducción (.qm) en la carpeta 'i18n'. La aplicación se ejecutará sin traducción.")
+
+
+    # --- Fin Configuración de Localización ---
+
+
     # 2. Crear instancia de la implementación de Infraestructura (ArgosTranslator)
     infrastructure_translator = ArgosTranslator()
     print("main.py: Instancia de ArgosTranslator creada.")
@@ -37,6 +89,8 @@ if __name__ == "__main__":
     try:
         print("main.py: Intentando traducción de prueba para forzar carga de modelo Argos...")
         # Usamos códigos de idioma que deberían estar instalados (en a es)
+        # Nota: Los nombres de los idiomas en el modelo Language deben coincidir con los que argostranslate reporta
+        # para que la búsqueda en get_supported_languages funcione correctamente.
         test_request = TranslationRequest("hello", Language("en", "English"), Language("es", "Spanish"))
         test_result = infrastructure_translator.translate(test_request)
         if test_result.is_successful:
