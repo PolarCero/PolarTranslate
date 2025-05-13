@@ -374,6 +374,11 @@ class MainWindow(QMainWindow):
         # Conectar el nuevo botón de captura de pantalla
         self.capture_screen_button.clicked.connect(self.on_capture_screen_button_clicked)
 
+        # --- Conectar señales de cambio en los ComboBoxes para actualizar el servicio ---
+        self.source_lang_combo.currentIndexChanged.connect(self._on_source_lang_changed)
+        self.target_lang_combo.currentIndexChanged.connect(self._on_target_lang_changed)
+        # --- Fin Conexión de ComboBoxes ---
+
 
         # --- Conexión para Hotkeys ---
         # Asumimos que HotkeySignalEmitter es un QObject y vive en el hilo principal
@@ -404,6 +409,12 @@ class MainWindow(QMainWindow):
 
         # Atributo para la ventana selectora (no necesitamos una referencia directa a la ventana Tkinter)
         # self._selector_window: Optional[ScreenSelectorWindow] = None # Ya no usamos ScreenSelectorWindow
+
+        # --- Actualizar el servicio con los idiomas seleccionados inicialmente ---
+        # Llamamos a los slots de cambio de idioma una vez al inicio para establecer los idiomas por defecto
+        self._on_source_lang_changed(self.source_lang_combo.currentIndex())
+        self._on_target_lang_changed(self.target_lang_combo.currentIndex())
+        # --- Fin Actualización inicial ---
 
 
     def _set_ui_busy_state(self, is_busy: bool, message: str = ""):
@@ -491,6 +502,33 @@ class MainWindow(QMainWindow):
             error_msg = f"Error al cargar idiomas: {e}"
             self.output_text_edit.setText(error_msg)
             self._set_ui_busy_state(False, error_msg) # Mostrar error en barra de estado
+
+    # --- Nuevos Slots para manejar el cambio de idioma en los ComboBoxes ---
+    @Slot(int) # Slot que recibe el índice del item seleccionado
+    def _on_source_lang_changed(self, index: int):
+        """Slot llamado cuando cambia la selección del idioma de origen."""
+        if index >= 0:
+            selected_lang: Language = self.source_lang_combo.itemData(index)
+            if selected_lang:
+                print(f"UI Layer: Idioma de origen seleccionado: {selected_lang.name} ({selected_lang.code})")
+                # Notificar al servicio de aplicación sobre el cambio
+                self.translator_service.set_default_source_language_code(selected_lang.code)
+            else:
+                 print("UI Layer: Advertencia: No se pudo obtener el objeto Language para el idioma de origen seleccionado.")
+
+
+    @Slot(int) # Slot que recibe el índice del item seleccionado
+    def _on_target_lang_changed(self, index: int):
+        """Slot llamado cuando cambia la selección del idioma de destino."""
+        if index >= 0:
+            selected_lang: Language = self.target_lang_combo.itemData(index)
+            if selected_lang:
+                print(f"UI Layer: Idioma de destino seleccionado: {selected_lang.name} ({selected_lang.code})")
+                # Notificar al servicio de aplicación sobre el cambio
+                self.translator_service.set_default_target_language_code(selected_lang.code)
+            else:
+                 print("UI Layer: Advertencia: No se pudo obtener el objeto Language para el idioma de destino seleccionado.")
+    # --- Fin Nuevos Slots ---
 
 
     def on_translate_button_clicked(self):
@@ -901,10 +939,8 @@ class MainWindow(QMainWindow):
             self.output_text_edit.setText(result.translated_text)
             # El estado de "Listo" se establecerá en _on_translation_task_completed
         else:
-            error_message = f"Error en tarea de traducción/OCR: {result.error}"
-            print(f"UI Layer: {error_message}")
-            self.output_text_edit.setText(error_message)
-            # El error en la barra de estado se mostrará en _on_translation_task_error
+            # Si hubo un error, el mensaje ya se estableció en _on_translation_task_error
+            pass # No hacemos nada aquí si hubo error, el otro slot ya manejó la UI
 
 
         # Limpiar la referencia al hilo actual después de que la tarea termine
@@ -935,7 +971,17 @@ class MainWindow(QMainWindow):
         print("UI Layer: Señal de fin de tarea recibida desde hilo estándar.")
         # Restaurar el estado de la UI a no ocupado
         # El mensaje de la barra de estado se establecerá a "Listo." por defecto
-        self._set_ui_busy_state(False)
+        # Si hubo un error, el mensaje ya se mostró en _on_translation_task_error
+        # Si la tarea fue exitosa, el mensaje de "Completada" se mostró en _on_translation_task_finished
+        # Si no hubo errores y la tarea fue exitosa, mostramos "Tarea completada."
+        if self.output_text_edit.toPlainText().startswith("Error en tarea:"):
+             # Si el texto de salida es un error, mantenemos ese mensaje en la barra de estado por un tiempo
+             current_error_msg = self.output_text_edit.toPlainText()
+             self._set_ui_busy_state(False, current_error_msg) # Mostrar el error en la barra de estado
+        else:
+             # Si no hubo error, la tarea fue exitosa
+             self._set_ui_busy_state(False, "Tarea completada.")
+
         # Restaurar el cursor
         QApplication.restoreOverrideCursor()
 

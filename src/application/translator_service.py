@@ -85,8 +85,25 @@ class TranslatorService(QObject): # <-- Aseguramos que hereda de QObject para cu
 
 
         # Atributos para almacenar los idiomas por defecto (eventualmente desde la Configuración)
-        self._default_source_lang_code = "en" # Temporal
-        self._default_target_lang_code = "es" # Temporal
+        # Inicializamos con valores por defecto, pero serán actualizados por la UI
+        self._default_source_lang_code: Optional[str] = None
+        self._default_target_lang_code: Optional[str] = None
+
+        print("Application Layer: TranslatorService inicializado.")
+
+
+    # --- Nuevos métodos para actualizar los idiomas por defecto (usados por la UI) ---
+    def set_default_source_language_code(self, code: str):
+        """Establece el código del idioma de origen por defecto para operaciones como hotkeys."""
+        print(f"Application Layer: Idioma de origen por defecto actualizado a: {code}")
+        self._default_source_lang_code = code
+
+    def set_default_target_language_code(self, code: str):
+        """Establece el código del idioma de destino por defecto para operaciones como hotkeys."""
+        print(f"Application Layer: Idioma de destino por defecto actualizado a: {code}")
+        self._default_target_lang_code = code
+    # --- Fin Nuevos métodos ---
+
 
     # Método existente para obtener idiomas soportados
     def get_supported_languages(self) -> List[Language]:
@@ -196,11 +213,26 @@ class TranslatorService(QObject): # <-- Aseguramos que hereda de QObject para cu
                  )
                  return
 
+            # --- Usar los idiomas por defecto almacenados (actualizados por la UI) ---
+            source_lang_code = self._default_source_lang_code
+            target_lang_code = self._default_target_lang_code
+
+            if not source_lang_code or not target_lang_code:
+                 error_msg = "Idiomas de origen/destino no seleccionados para la traducción por hotkey."
+                 print(f"Application Layer Error: {error_msg}")
+                 QCoreApplication.instance().postEvent(
+                      self,
+                      _ErrorOccurredEvent(error_msg)
+                 )
+                 return
+            # --- Fin Usar idiomas por defecto ---
+
+
             # Usamos perform_translation directamente, que ya maneja errores y retorna TranslationResult
             translation_result = self.perform_translation(
                 clipboard_text,
-                self._default_source_lang_code,
-                self._default_target_lang_code
+                source_lang_code, # Usar idioma de origen por defecto (actualizado por UI)
+                target_lang_code # Usar idioma de destino por defecto (actualizado por UI)
             )
 
             # Emitir TranslationResult al hilo principal de la UI via la señal
