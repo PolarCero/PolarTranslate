@@ -1,108 +1,76 @@
 # PolarTranslate
 Free and Open Source Translator. Works locally, offline, and requires no server.
 
-
 **Polar Translate** es una aplicación de traducción local que utiliza los modelos de Argos Translate para ofrecer traducción offline, rápida y privada, sin depender de servidores externos.
+
+---
 
 ## Características
 
-- Traducción completamente offline
-- Basado en modelos open source de Argos Translate
-- Código open source con licencia AGPL-3.0
+- Traducción completamente offline utilizando modelos de Argos Translate.
+- Basado en modelos *open source*.
+- Código *open source* con licencia **AGPL-3.0**.
 - Funcionalidades de OCR (Reconocimiento Óptico de Caracteres) desde imágenes y captura de pantalla.
+- Gestión de paquetes de idioma de Argos Translate (instalación/desinstalación) desde la interfaz de usuario.
 
-## Tecnologías usadas
+---
+
+## Requisitos
 
 - Python 3.11.9 (Recomendado, no superior)
-- Argos Translate
-- Pytesseract (Biblioteca de Python para OCR)
 - **Tesseract OCR Engine** (Software externo para OCR)
 
-## ⚙️ Instalación
+---
 
-### 1. Clona o descarga el repositorio
+## 🚀 Ejecutar desde Código Fuente
 
-```bash
-git clone https://github.com/PolarCero/PolarTranslate.git
-cd PolarTranslate
-```
+Sigue estos pasos si deseas clonar el repositorio y ejecutar la aplicación directamente desde el código fuente en tu máquina.
 
-### 2. (Opcional pero recomendado) Usa un entorno virtual de Python
+👉 Para obtener instrucciones detalladas sobre cómo configurar tu entorno, instalar dependencias y ejecutar la aplicación desde el código fuente, consulta nuestra [**Guía Completa para Ejecutar desde Código Fuente**](docs/RUNNING_FROM_SOURCE.md).
 
-https://www.python.org/downloads/release/python-3119/
+---
 
-Esto es útil si no tienes Python 3.11.9 instalado globalmente o quieres mantener dependencias aisladas:
+## 📦 Usar el Ejecutable (Release)
 
-```bash
-# Crear un entorno virtual (requiere tener Python 3.11.9 instalado)
-python -m venv .venv_p311
+Si solo quieres usar la aplicación sin instalar Python ni gestionar dependencias, **descarga el ejecutable precompilado** desde las *Releases* de GitHub.
 
-py -3.11 -m venv .venv
+### 1. Descarga el Ejecutable
 
+- Ve a la página de Releases del repositorio:  
+  [https://github.com/PolarCero/PolarTranslate/releases](https://github.com/PolarCero/PolarTranslate/releases)  
+  *(Reemplaza PolarCero/PolarTranslate con la ruta real de tu repositorio si es diferente).*
+- Busca la última Release (por ejemplo, `v0.1.0`).
+- En la sección **"Assets"** de la Release, descarga el archivo `PolarTranslate.exe`.
 
-# Activar el entorno virtual
-# En Windows:
-.\.venv\Scripts\Activate.ps1
-# En macOS/Linux:
-source .venv/bin/activate
-```
+### 2. Guarda el Ejecutable
 
-### 3. Instala las dependencias del proyecto
+Guarda el archivo `PolarTranslate.exe` en una carpeta de tu elección en tu computadora (por ejemplo, en tu carpeta de Descargas o crea una carpeta específica para la aplicación).
 
-```bash
-pip install -r requirements.txt
-```
+### 3. Instala Tesseract-OCR (requerido para funciones OCR)
 
-### 4. Instala Tesseract-OCR (requerido para funciones OCR)
-(Release)
-🔗 https://github.com/tesseract-ocr/tesseract
+Este paso es el mismo que para ejecutar desde código fuente y es **OBLIGATORIO** para las funciones de OCR.
 
-Asegúrate de que el ejecutable `tesseract` esté en tu variable de entorno `PATH`.
+- Descarga el instalador de Tesseract OCR desde el sitio web oficial:  
+  [https://tesseract-ocr.github.io/](https://tesseract-ocr.github.io/)
+- Sigue las instrucciones de instalación para tu sistema operativo.
+- Asegúrate de que el ejecutable `tesseract` esté en el **PATH** de tu sistema.
 
-### 5. Instala los modelos de traducción
+### 4. Ejecuta la Aplicación
 
-```bash
-python install_models.py
-```
+Simplemente haz doble clic en el archivo `PolarTranslate.exe` que descargaste.
 
-### 6. Ejecuta la aplicación
+> **Nota sobre Paquetes de Idioma:**  
+> Los paquetes de idioma de Argos Translate se gestionan directamente desde la ventana de **Configuración** dentro de la aplicación.  
+> La primera vez que la ejecutes, es posible que solo tengas los idiomas base instalados.  
+> Ve a `Configuración -> Idiomas y Paquetes` para instalar los idiomas que necesites.  
+> La aplicación te pedirá que la cierres y vuelvas a abrir después de instalar/desinstalar paquetes para que los cambios surtan efecto.
 
-```bash
-python main.py
-```
-
-> ✅ Asegúrate de tener **Python 3.11.9** instalado o usar un entorno virtual con esa versión.
-
-### ℹ️ Activación del entorno virtual en Windows
-
-Si estás en Windows y usas PowerShell, activa el entorno virtual con:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-#### ⚠️ ¿Ves un error como este?
-
-```text
-.\.venv\Scripts\Activate.ps1 : File ... is not digitally signed. 
-You cannot run this script on the current system.
-```
-
-Significa que tu política de ejecución de scripts está deshabilitada. Puedes permitirlo temporalmente con este comando:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-```
-
-Esto cambiará la política **solo durante la sesión actual**, sin afectar la seguridad general del sistema. Luego intenta de nuevo:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+---
 
 ## Licencia
-Este proyecto está licenciado bajo la AGPL-3.0.
+Este proyecto está licenciado bajo la **AGPL-3.0**.
 
-Los modelos de traducción son provistos por Argos Translate y están licenciados bajo MIT. Se agradece y reconoce su excelente trabajo.
+Los modelos de traducción son provistos por **Argos Translate** y están licenciados bajo **MIT**. Se agradece y reconoce su gran trabajo.
 
-Si usas este proyecto o haces algo derivado, por favor menciona el proyecto original. Toda contribución y fork debe mantenerse también open source, bajo los términos de la licencia AGPL.
+> Si usas este proyecto o haces algo derivado, por favor menciona el proyecto original.  
+> Toda contribución y fork debe mantenerse también open source, bajo los términos de la licencia AGPL.
