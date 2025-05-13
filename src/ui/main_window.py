@@ -30,6 +30,8 @@ import mss.tools
 
 # Importar la nueva ventana pop-up
 from .pop_up_window import PopUpTranslationWindow
+# Importar la nueva ventana de configuración
+from .config_window import ConfigWindow
 
 # Importar el servicio de la capa de Aplicación y los modelos del Dominio
 from src.application.translator_service import TranslatorService, HotkeySignalEmitter
@@ -326,6 +328,13 @@ class MainWindow(QMainWindow):
         self.translate_button = QPushButton("Traducir Texto Manual") # Cambiamos el texto del botón
         controls_layout.addWidget(self.translate_button)
 
+        # --- Añadir botón de Configuración ---
+        # Podemos usar un icono de engranaje más adelante, por ahora es texto
+        self.settings_button = QPushButton("Configuración")
+        # Opcional: self.settings_button.setIcon(QIcon("path/to/gear_icon.png")) # Necesitarías un icono
+        controls_layout.addWidget(self.settings_button)
+        # --- Fin Añadir botón de Configuración ---
+
         main_layout.addLayout(controls_layout)
 
         # --- Nuevos botones para OCR y Archivos ---
@@ -374,6 +383,9 @@ class MainWindow(QMainWindow):
         # Conectar el nuevo botón de captura de pantalla
         self.capture_screen_button.clicked.connect(self.on_capture_screen_button_clicked)
 
+        # Conectar la señal del botón de Configuración
+        self.settings_button.clicked.connect(self.on_settings_button_clicked)
+
         # --- Conectar señales de cambio en los ComboBoxes para actualizar el servicio ---
         self.source_lang_combo.currentIndexChanged.connect(self._on_source_lang_changed)
         self.target_lang_combo.currentIndexChanged.connect(self._on_target_lang_changed)
@@ -409,6 +421,9 @@ class MainWindow(QMainWindow):
 
         # Atributo para la ventana selectora (no necesitamos una referencia directa a la ventana Tkinter)
         # self._selector_window: Optional[ScreenSelectorWindow] = None # Ya no usamos ScreenSelectorWindow
+
+        # Atributo para la ventana de configuración # <-- Añadir esta línea
+        self._config_window: Optional[ConfigWindow] = None
 
         # --- Actualizar el servicio con los idiomas seleccionados inicialmente ---
         # Llamamos a los slots de cambio de idioma una vez al inicio para establecer los idiomas por defecto
@@ -530,6 +545,20 @@ class MainWindow(QMainWindow):
                  print("UI Layer: Advertencia: No se pudo obtener el objeto Language para el idioma de destino seleccionado.")
     # --- Fin Nuevos Slots ---
 
+    # --- Slot para abrir la ventana de Configuración --- # <-- Añadir este bloque
+    @Slot()
+    def on_settings_button_clicked(self):
+        """
+        Slot para el botón 'Configuración'.
+        Abre la ventana de configuración.
+        """
+        print("UI Layer: 'Configuración' button clicked.")
+        # Creamos una instancia de la ventana de configuración, pasando el servicio
+        # Mantenemos una referencia a la ventana para evitar que sea recolectada por el garbage collector
+        self._config_window = ConfigWindow(self.translator_service, self) # Pasar 'self' como padre
+        self._config_window.show()
+        print("UI Layer: Ventana de Configuración mostrada.")
+    # --- Fin Slot para Configuración ---
 
     def on_translate_button_clicked(self):
         """
