@@ -30,6 +30,8 @@ import mss.tools
 
 # Importar la nueva ventana pop-up
 from .pop_up_window import PopUpTranslationWindow
+# Importar la nueva ventana de configuración
+from .config_window import ConfigWindow
 
 # Importar el servicio de la capa de Aplicación y los modelos del Dominio
 from src.application.translator_service import TranslatorService, HotkeySignalEmitter
@@ -299,14 +301,12 @@ class MainWindow(QMainWindow):
 
         self.translator_service = translator_service
 
-        # Usar self.tr() para el título de la ventana
         self.setWindowTitle("Polar Translate")
         self.setGeometry(100, 100, 700, 500) # Aumentamos un poco el tamaño
 
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
-        # Usar self.tr() para el mensaje inicial de la barra de estado
-        self.statusBar.showMessage(self.tr("Ready."))
+        self.statusBar.showMessage("Listo.")
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -316,38 +316,39 @@ class MainWindow(QMainWindow):
         controls_layout = QHBoxLayout()
 
         self.source_lang_combo = QComboBox()
-        # Usar self.tr() para la etiqueta
-        self.source_lang_label = QLabel(self.tr("Source:"))
+        self.source_lang_label = QLabel("Origen:")
         controls_layout.addWidget(self.source_lang_label)
         controls_layout.addWidget(self.source_lang_combo)
 
         self.target_lang_combo = QComboBox()
-        # Usar self.tr() para la etiqueta
-        self.target_lang_label = QLabel(self.tr("Target:"))
+        self.target_lang_label = QLabel("Destino:")
         controls_layout.addWidget(self.target_lang_label)
         controls_layout.addWidget(self.target_lang_combo)
 
-        # Usar self.tr() para el texto del botón
-        self.translate_button = QPushButton(self.tr("Translate Manual Text"))
+        self.translate_button = QPushButton("Traducir Texto Manual") # Cambiamos el texto del botón
         controls_layout.addWidget(self.translate_button)
+
+        # --- Añadir botón de Configuración ---
+        # Podemos usar un icono de engranaje más adelante, por ahora es texto
+        self.settings_button = QPushButton("Configuración")
+        # Opcional: self.settings_button.setIcon(QIcon("path/to/gear_icon.png")) # Necesitarías un icono
+        controls_layout.addWidget(self.settings_button)
+        # --- Fin Añadir botón de Configuración ---
 
         main_layout.addLayout(controls_layout)
 
         # --- Nuevos botones para OCR y Archivos ---
         file_ocr_layout = QHBoxLayout()
 
-        # Usar self.tr() para el texto del botón
-        self.ocr_file_button = QPushButton(self.tr("Translate Image File")) # OCR desde archivo
+        self.ocr_file_button = QPushButton("Traducir Imagen") # OCR desde archivo
         file_ocr_layout.addWidget(self.ocr_file_button)
         self.ocr_file_button.setEnabled(True) # Habilitar botón de OCR Archivo
 
-        # Usar self.tr() para el texto del botón
-        self.ocr_clipboard_button = QPushButton(self.tr("Image from Clipboard"))
+        self.ocr_clipboard_button = QPushButton("Imagen desde Portapapeles")
         file_ocr_layout.addWidget(self.ocr_clipboard_button)
         self.ocr_clipboard_button.setEnabled(True) # Habilitar botón de OCR Portapapeles
 
-        # Usar self.tr() para el texto del botón
-        self.translate_file_button = QPushButton(self.tr("Translate Text File"))
+        self.translate_file_button = QPushButton("Traducir Archivo de Texto")
         file_ocr_layout.addWidget(self.translate_file_button)
 
         main_layout.addLayout(file_ocr_layout)
@@ -356,8 +357,7 @@ class MainWindow(QMainWindow):
         # --- Nuevo botón para Captura de Pantalla y OCR ---
         screen_capture_layout = QHBoxLayout()
 
-        # Usar self.tr() para el texto del botón
-        self.capture_screen_button = QPushButton(self.tr("Capture Screen and Translate")) # Nuevo botón
+        self.capture_screen_button = QPushButton("Capturar Pantalla y Traducir") # Nuevo botón
         screen_capture_layout.addWidget(self.capture_screen_button)
         self.capture_screen_button.setEnabled(True) # Habilitar botón de captura de pantalla
 
@@ -366,14 +366,12 @@ class MainWindow(QMainWindow):
 
 
         self.input_text_edit = QTextEdit()
-        # Usar self.tr() para el placeholder
-        self.input_text_edit.setPlaceholderText(self.tr("Enter text to translate here or use the OCR/File options..."))
+        self.input_text_edit.setPlaceholderText("Introduce el texto a traducir aquí o usa las opciones de OCR/Archivo...")
         main_layout.addWidget(self.input_text_edit)
 
         self.output_text_edit = QTextEdit()
         self.output_text_edit.setReadOnly(True)
-        # Usar self.tr() para el placeholder
-        self.output_text_edit.setPlaceholderText(self.tr("Translated text will appear here..."))
+        self.output_text_edit.setPlaceholderText("El texto traducido aparecerá aquí...")
         main_layout.addWidget(self.output_text_edit)
 
         # Conectar señales (eventos) a slots (métodos que responden a eventos)
@@ -384,6 +382,14 @@ class MainWindow(QMainWindow):
         self.ocr_clipboard_button.clicked.connect(self.on_ocr_clipboard_button_clicked)
         # Conectar el nuevo botón de captura de pantalla
         self.capture_screen_button.clicked.connect(self.on_capture_screen_button_clicked)
+
+        # Conectar la señal del botón de Configuración
+        self.settings_button.clicked.connect(self.on_settings_button_clicked)
+
+        # --- Conectar señales de cambio en los ComboBoxes para actualizar el servicio ---
+        self.source_lang_combo.currentIndexChanged.connect(self._on_source_lang_changed)
+        self.target_lang_combo.currentIndexChanged.connect(self._on_target_lang_changed)
+        # --- Fin Conexión de ComboBoxes ---
 
 
         # --- Conexión para Hotkeys ---
@@ -416,6 +422,15 @@ class MainWindow(QMainWindow):
         # Atributo para la ventana selectora (no necesitamos una referencia directa a la ventana Tkinter)
         # self._selector_window: Optional[ScreenSelectorWindow] = None # Ya no usamos ScreenSelectorWindow
 
+        # Atributo para la ventana de configuración # <-- Añadir esta línea
+        self._config_window: Optional[ConfigWindow] = None
+
+        # --- Actualizar el servicio con los idiomas seleccionados inicialmente ---
+        # Llamamos a los slots de cambio de idioma una vez al inicio para establecer los idiomas por defecto
+        self._on_source_lang_changed(self.source_lang_combo.currentIndex())
+        self._on_target_lang_changed(self.target_lang_combo.currentIndex())
+        # --- Fin Actualización inicial ---
+
 
     def _set_ui_busy_state(self, is_busy: bool, message: str = ""):
         """
@@ -435,8 +450,7 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage(message, 0) # 0 significa mostrar indefinidamente
         else:
             # Mostrar mensaje de listo
-            # Usar self.tr() para el mensaje por defecto
-            self.statusBar.showMessage(message if message else self.tr("Ready."), 3000) # Mostrar mensaje específico o "Listo." por 3 seg
+            self.statusBar.showMessage(message if message else "Listo.", 3000) # Mostrar mensaje específico o "Listo." por 3 seg
 
 
     @Slot(str)
@@ -458,9 +472,7 @@ class MainWindow(QMainWindow):
         Actualiza la UI para indicar que no hay tareas en curso.
         """
         print("UI Layer: Tarea completada.")
-        # El mensaje de la barra de estado ya se habrá establecido en _on_translation_task_finished o _on_translation_task_error
-        # Solo necesitamos restaurar el estado de los botones y el cursor.
-        self._set_ui_busy_state(False, self.statusBar.currentMessage()) # Mantener el mensaje actual de la barra de estado
+        self._set_ui_busy_state(False)
         # Opcional: Restaurar el cursor
         QApplication.restoreOverrideCursor()
 
@@ -470,8 +482,7 @@ class MainWindow(QMainWindow):
         Carga los idiomas disponibles en los ComboBoxes de origen y destino.
         """
         print("UI Layer: Loading languages...")
-        # Usar self.tr() para el mensaje de carga
-        self._set_ui_busy_state(True, self.tr("Loading languages..."))
+        self._set_ui_busy_state(True, "Cargando idiomas...")
         QApplication.processEvents() # Asegurar que el mensaje se muestre
 
         try:
@@ -482,35 +493,72 @@ class MainWindow(QMainWindow):
             self.target_lang_combo.clear()
 
             for lang in languages:
-                # Usar lang.name (que ya viene localizado por argostranslate si hay paquetes)
                 self.source_lang_combo.addItem(lang.name, lang)
                 self.target_lang_combo.addItem(lang.name, lang)
 
             if len(languages) >= 2:
-                 # Intentar seleccionar Español como destino por defecto si existe
-                 es_index = self.target_lang_combo.findData(Language(code="es", name="Spanish")) # Buscar por código y nombre común
+                 es_index = self.target_lang_combo.findData(Language(code="es", name="Spanish")) # Nota: El nombre exacto puede variar según argostranslate
                  if es_index == -1: # Fallback por si el nombre no es "Spanish"
                      es_index = self.target_lang_combo.findData(Language(code="es", name="Español"))
                  if es_index != -1:
                      self.target_lang_combo.setCurrentIndex(es_index)
 
-                 # Intentar seleccionar Inglés como origen por defecto si existe
-                 en_index = self.source_lang_combo.findData(Language(code="en", name="English")) # Buscar por código y nombre común
+                 en_index = self.source_lang_combo.findData(Language(code="en", name="English")) # Nota: El nombre exacto puede variar según argostranslate
                  if en_index == -1: # Fallback por si el nombre no es "English"
                       en_index = self.source_lang_combo.findData(Language(code="en", name="Inglés"))
                  if en_index != -1:
                       self.source_lang_combo.setCurrentIndex(en_index)
 
-            # Usar self.tr() para el mensaje de éxito
-            self._set_ui_busy_state(False, self.tr("Languages loaded. Ready."))
+
+            self._set_ui_busy_state(False, "Idiomas cargados. Listo.")
 
         except Exception as e:
             print(f"UI Layer: Error loading languages: {e}")
-            # Usar self.tr() para el mensaje de error
-            error_msg = self.tr("Error loading languages: %s") % e
+            error_msg = f"Error al cargar idiomas: {e}"
             self.output_text_edit.setText(error_msg)
             self._set_ui_busy_state(False, error_msg) # Mostrar error en barra de estado
 
+    # --- Nuevos Slots para manejar el cambio de idioma en los ComboBoxes ---
+    @Slot(int) # Slot que recibe el índice del item seleccionado
+    def _on_source_lang_changed(self, index: int):
+        """Slot llamado cuando cambia la selección del idioma de origen."""
+        if index >= 0:
+            selected_lang: Language = self.source_lang_combo.itemData(index)
+            if selected_lang:
+                print(f"UI Layer: Idioma de origen seleccionado: {selected_lang.name} ({selected_lang.code})")
+                # Notificar al servicio de aplicación sobre el cambio
+                self.translator_service.set_default_source_language_code(selected_lang.code)
+            else:
+                 print("UI Layer: Advertencia: No se pudo obtener el objeto Language para el idioma de origen seleccionado.")
+
+
+    @Slot(int) # Slot que recibe el índice del item seleccionado
+    def _on_target_lang_changed(self, index: int):
+        """Slot llamado cuando cambia la selección del idioma de destino."""
+        if index >= 0:
+            selected_lang: Language = self.target_lang_combo.itemData(index)
+            if selected_lang:
+                print(f"UI Layer: Idioma de destino seleccionado: {selected_lang.name} ({selected_lang.code})")
+                # Notificar al servicio de aplicación sobre el cambio
+                self.translator_service.set_default_target_language_code(selected_lang.code)
+            else:
+                 print("UI Layer: Advertencia: No se pudo obtener el objeto Language para el idioma de destino seleccionado.")
+    # --- Fin Nuevos Slots ---
+
+    # --- Slot para abrir la ventana de Configuración --- # <-- Añadir este bloque
+    @Slot()
+    def on_settings_button_clicked(self):
+        """
+        Slot para el botón 'Configuración'.
+        Abre la ventana de configuración.
+        """
+        print("UI Layer: 'Configuración' button clicked.")
+        # Creamos una instancia de la ventana de configuración, pasando el servicio
+        # Mantenemos una referencia a la ventana para evitar que sea recolectada por el garbage collector
+        self._config_window = ConfigWindow(self.translator_service, self) # Pasar 'self' como padre
+        self._config_window.show()
+        print("UI Layer: Ventana de Configuración mostrada.")
+    # --- Fin Slot para Configuración ---
 
     def on_translate_button_clicked(self):
         """
@@ -524,19 +572,17 @@ class MainWindow(QMainWindow):
         target_language: Language = self.target_lang_combo.currentData()
 
         if not input_text:
-            # Usar self.tr() para el mensaje
-            self.output_text_edit.setText(self.tr("Please enter text to translate."))
-            self.statusBar.showMessage(self.tr("Please enter text to translate."), 3000)
+            self.output_text_edit.setText("Por favor, introduce texto para traducir.")
+            self.statusBar.showMessage("Por favor, introduce texto para traducir.", 3000)
             return
 
         if not source_language or not target_language:
-            # Usar self.tr() para el mensaje
-             self.output_text_edit.setText(self.tr("Please select valid source and target languages."))
-             self.statusBar.showMessage(self.tr("Please select languages."), 3000)
+             self.output_text_edit.setText("Por favor, selecciona idiomas de origen y destino válidos.")
+             self.statusBar.showMessage("Por favor, selecciona idiomas.", 3000)
              return
 
-        # Indicar inicio de tarea (usar self.tr())
-        self._translation_result_emitter.task_started.emit(self.tr("Translating manual text..."))
+        # Indicar inicio de tarea
+        self._translation_result_emitter.task_started.emit("Traduciendo texto manual...")
 
         # Iniciar la tarea de traducción en un hilo estándar
         self._start_translation_task(
@@ -558,18 +604,15 @@ class MainWindow(QMainWindow):
         # Asegurarse de que el resultado es un TranslationResult
         if not isinstance(result, TranslationResult):
              print(f"UI Layer Error: Resultado de hotkey inesperado: {type(result).__name__}")
-             # Usar self.tr() para el mensaje de error
-             self.statusBar.showMessage(self.tr("Hotkey error: Unexpected result type."), 5000)
+             self.statusBar.showMessage(f"Error hotkey: Resultado inesperado.", 5000)
              return
 
         if result.is_successful:
             pop_up = PopUpTranslationWindow(result.translated_text, self)
             pop_up.show()
-            # Usar self.tr() para el mensaje de éxito
-            self.statusBar.showMessage(self.tr("Hotkey translation completed."), 3000)
+            self.statusBar.showMessage("Traducción por hotkey completada.", 3000)
         else:
-            # Usar self.tr() para el mensaje de error
-            error_message = self.tr("Error (Hotkey): %s") % result.error
+            error_message = f"Error (Hotkey): {result.error}"
             print(f"UI Layer: {error_message}")
             self.statusBar.showMessage(error_message, 5000)
 
@@ -581,8 +624,7 @@ class MainWindow(QMainWindow):
         Muestra el error en la barra de estado.
         """
         print(f"UI Layer: Señal de error de hotkey recibida: {error_message}")
-        # Usar self.tr() para el mensaje de error
-        self.statusBar.showMessage(self.tr("Hotkey error: %s") % error_message, 5000)
+        self.statusBar.showMessage(f"Error hotkey: {error_message}", 5000)
 
 
     # --- Slots para OCR y Archivos ---
@@ -596,10 +638,9 @@ class MainWindow(QMainWindow):
         print("UI Layer: 'OCR desde Archivo' button clicked.")
         # Abrir diálogo de archivo para seleccionar una imagen
         file_dialog = QFileDialog(self)
-        # Usar self.tr() para el título del diálogo
-        file_dialog.setWindowTitle(self.tr("Select image file for OCR"))
-        # Filtrar por tipos de archivo de imagen comunes (los filtros no se traducen automáticamente)
-        file_dialog.setNameFilter(self.tr("Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;All Files (*.*)"))
+        file_dialog.setWindowTitle("Seleccionar archivo de imagen para OCR")
+        # Filtrar por tipos de archivo de imagen comunes
+        file_dialog.setNameFilter("Archivos de Imagen (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
         file_dialog.setFileMode(QFileDialog.ExistingFile) # Solo permitir seleccionar un archivo existente
 
         if file_dialog.exec(): # Mostrar el diálogo y esperar a que el usuario seleccione un archivo
@@ -613,12 +654,11 @@ class MainWindow(QMainWindow):
                 target_language: Language = self.target_lang_combo.currentData()
 
                 if not source_language or not target_language:
-                    # Usar self.tr() para el mensaje
-                    self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
+                    self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
                     return
 
-                # Indicar inicio de tarea (usar self.tr())
-                self._translation_result_emitter.task_started.emit(self.tr("Performing OCR and Translating from file..."))
+                # Indicar inicio de tarea
+                self._translation_result_emitter.task_started.emit("Realizando OCR y Traduciendo desde archivo...")
 
                 try:
                     # Cargar la imagen usando PIL
@@ -629,13 +669,12 @@ class MainWindow(QMainWindow):
                         self.translator_service.perform_ocr_and_translate,
                         image, # Pasamos el objeto PIL Image
                         source_language.code,
-                        target_language.code,
+                        target_language.code
                         # Los slots de resultado/error ya están conectados a _translation_result_emitter
                     )
 
                 except FileNotFoundError:
-                    # Usar self.tr() para el mensaje de error
-                    error_msg = self.tr("Error: File not found at %s") % image_path
+                    error_msg = f"Error: Archivo no encontrado en {image_path}"
                     print(f"UI Layer: {error_msg}")
                     # Emitir error para que el slot lo maneje
                     self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -643,8 +682,7 @@ class MainWindow(QMainWindow):
                     self._translation_result_emitter.task_finished.emit()
 
                 except Exception as e:
-                    # Usar self.tr() para el mensaje de error
-                    error_msg = self.tr("Error loading or processing image file: %s") % e
+                    error_msg = f"Error al cargar o procesar imagen de archivo: {e}"
                     print(f"UI Layer: {error_msg}")
                     # Emitir error para que el slot lo maneje
                     self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -671,12 +709,11 @@ class MainWindow(QMainWindow):
             target_language: Language = self.target_lang_combo.currentData()
 
             if not source_language or not target_language:
-                # Usar self.tr() para el mensaje
-                self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
+                self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
                 return
 
-            # Indicar inicio de tarea (usar self.tr())
-            self._translation_result_emitter.task_started.emit(self.tr("Performing OCR and Translating from clipboard..."))
+            # Indicar inicio de tarea
+            self._translation_result_emitter.task_started.emit("Realizando OCR y Traduciendo desde portapapeles...")
 
             # --- Guardar QImage a un archivo temporal ---
             temp_file = None # Inicializar a None
@@ -691,8 +728,7 @@ class MainWindow(QMainWindow):
                 success = image.save(temp_file_path, "PNG") # Usar la ruta del archivo y formato string
 
                 if not success:
-                     # Usar self.tr() para el mensaje de error
-                     error_msg = self.tr("Error saving clipboard image to temporary file: %s") % temp_file_path
+                     error_msg = f"Error al guardar la imagen del portapapeles en archivo temporal: {temp_file_path}"
                      print(f"UI Layer: {error_msg}")
                      # Emitir error
                      self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -718,8 +754,7 @@ class MainWindow(QMainWindow):
                 )
 
             except Exception as e:
-                # Usar self.tr() para el mensaje de error
-                error_msg = self.tr("Unexpected error processing clipboard image: %s") % e
+                error_msg = f"Error inesperado durante el procesamiento de imagen del portapapeles: {e}"
                 print(f"UI Layer: {error_msg}")
                 # Emitir error
                 self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -732,9 +767,8 @@ class MainWindow(QMainWindow):
 
         else:
             print("UI Layer: No se encontró imagen en el portapapeles.")
-            # Usar self.tr() para el mensaje
-            self.output_text_edit.setText(self.tr("No image found in clipboard."))
-            self.statusBar.showMessage(self.tr("No image found in clipboard."), 3000)
+            self.output_text_edit.setText("No se encontró imagen en el portapapeles.")
+            self.statusBar.showMessage("No se encontró imagen en el portapapeles.", 3000)
 
 
     @Slot()
@@ -745,10 +779,8 @@ class MainWindow(QMainWindow):
         """
         print("UI Layer: 'Traducir Archivo (Texto)' button clicked.")
         file_dialog = QFileDialog(self)
-        # Usar self.tr() para el título del diálogo
-        file_dialog.setWindowTitle(self.tr("Select text file to translate"))
-        # Filtrar por tipos de archivo de texto (los filtros no se traducen automáticamente)
-        file_dialog.setNameFilter(self.tr("Text Files (*.txt *.doc *.docx);;All Files (*.*)"))
+        file_dialog.setWindowTitle("Seleccionar archivo de texto para traducir")
+        file_dialog.setNameFilter("Archivos de Texto (*.txt *.doc *.docx);;Todos los archivos (*.*)")
         file_dialog.setFileMode(QFileDialog.ExistingFile)
 
         if file_dialog.exec():
@@ -761,12 +793,11 @@ class MainWindow(QMainWindow):
                 target_language: Language = self.target_lang_combo.currentData()
 
                 if not source_language or not target_language:
-                    # Usar self.tr() para el mensaje
-                    self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
+                    self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
                     return
 
-                # Indicar inicio de tarea (usar self.tr())
-                self._translation_result_emitter.task_started.emit(self.tr("Reading file and Translating..."))
+                # Indicar inicio de tarea
+                self._translation_result_emitter.task_started.emit("Leyendo archivo y Traduciendo...")
 
                 try:
                     # Leer el contenido del archivo - Esto puede ser bloqueante, pero lo hacemos antes del worker
@@ -789,16 +820,14 @@ class MainWindow(QMainWindow):
                     )
 
                 except FileNotFoundError:
-                    # Usar self.tr() para el mensaje de error
-                    error_msg = self.tr("Error: File not found at %s") % file_path
+                    error_msg = f"Error: Archivo no encontrado en {file_path}"
                     print(f"UI Layer: {error_msg}")
                     # Emitir error
                     self._translation_result_emitter.error_occurred.emit(error_msg)
                     # Asegurar que el estado de ocupado se desactive
                     self._translation_result_emitter.task_finished.emit()
                 except Exception as e:
-                    # Usar self.tr() para el mensaje de error
-                    error_msg = self.tr("Unexpected error processing text file: %s") % e
+                    error_msg = f"Error inesperado al procesar archivo de texto: {e}"
                     print(f"UI Layer: {error_msg}")
                     # Emitir error
                     self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -820,13 +849,11 @@ class MainWindow(QMainWindow):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                     if not content:
-                        # Usar self.tr() para el mensaje
-                        QMessageBox.warning(self, self.tr("Empty File"), self.tr("The selected text file is empty."))
+                        QMessageBox.warning(self, "Archivo Vacío", "El archivo de texto seleccionado está vacío.")
                     return content
             except Exception as e:
                 print(f"UI Layer: Error al leer archivo .txt: {e}")
-                # Usar self.tr() para el título y mensaje
-                QMessageBox.warning(self, self.tr("Error Reading File"), self.tr("Could not read the .txt file: %s") % e)
+                QMessageBox.warning(self, "Error al leer archivo", f"No se pudo leer el archivo .txt: {e}")
                 return ""
         elif file_extension == ".docx":
             if Document:
@@ -834,28 +861,23 @@ class MainWindow(QMainWindow):
                     document = Document(file_path)
                     content = "\n".join([paragraph.text for paragraph in document.paragraphs])
                     if not content:
-                         # Usar self.tr() para el mensaje
-                         QMessageBox.warning(self, self.tr("Empty File"), self.tr("The selected .docx file is empty or contains no text."))
+                         QMessageBox.warning(self, "Archivo Vacío", "El archivo .docx seleccionado está vacío o no contiene texto.")
                     return content
                 except Exception as e:
                     print(f"UI Layer: Error al leer archivo .docx: {e}")
-                    # Usar self.tr() para el título y mensaje
-                    QMessageBox.warning(self, self.tr("Error Reading File"), self.tr("Could not read the .docx file: %s") % e)
+                    QMessageBox.warning(self, "Error al leer archivo", f"No se pudo leer el archivo .docx: {e}")
                     return ""
             else:
                 print("UI Layer: La biblioteca 'python-docx' no está instalada.")
-                # Usar self.tr() para el título y mensaje
-                QMessageBox.warning(self, self.tr("Missing Library"), self.tr("To read .docx files, install the 'python-docx' library (`pip install python-docx`)."))
+                QMessageBox.warning(self, "Biblioteca faltante", "Para leer archivos .docx, instala la biblioteca 'python-docx' (`pip install python-docx`).")
                 return ""
         elif file_extension == ".doc":
              print("UI Layer: La lectura de archivos .doc no está implementada.")
-             # Usar self.tr() para el título y mensaje
-             QMessageBox.warning(self, self.tr("Format Not Supported"), self.tr("Reading .doc files is not currently implemented. Please use .docx or .txt."))
+             QMessageBox.warning(self, "Formato no soportado", "Actualmente no se soporta la lectura de archivos .doc. Por favor, usa .docx o .txt.")
              return ""
         else:
             print(f"UI Layer: Extensión de archivo no soportada para lectura de texto: {file_extension}")
-            # Usar self.tr() para el título y mensaje
-            QMessageBox.warning(self, self.tr("Format Not Supported"), self.tr("File extension '%s' is not supported for text reading.") % file_extension)
+            QMessageBox.warning(self, "Formato no soportado", f"La extensión de archivo '{file_extension}' no está soportada para lectura de texto.")
             return ""
 
 
@@ -914,7 +936,7 @@ class MainWindow(QMainWindow):
         # Si ya hay un hilo activo, no iniciar uno nuevo
         if self._current_translation_thread is not None and self._current_translation_thread.is_alive():
             print("UI Layer: Hilo de traducción ocupado. Espere a que termine la tarea actual.")
-            self.statusBar.showMessage(self.tr("Previous task still in progress. Please wait."), 3000) # Usar self.tr()
+            self.statusBar.showMessage("Tarea anterior aún en proceso. Espere.", 3000)
             return
 
         print("UI Layer: Creando nuevo hilo estándar para tarea de traducción.")
@@ -961,9 +983,7 @@ class MainWindow(QMainWindow):
         Muestra el error en el área de texto de salida y la barra de estado.
         """
         print(f"UI Layer: Señal de error de tarea de traducción/OCR recibida desde hilo estándar: {error_message}")
-        # Usar self.tr() para el mensaje de error
-        translated_error_message = self.tr("Error in task: %s") % error_message
-        self.output_text_edit.setText(translated_error_message)
+        self.output_text_edit.setText(f"Error en tarea de traducción/OCR: {error_message}")
         # El estado de "Listo" con el mensaje de error se establecerá en _on_translation_task_completed
         # self.statusBar.showMessage(f"Error en tarea: {error_message}", 5000) # Ya se maneja en _on_translation_task_completed
 
@@ -983,13 +1003,13 @@ class MainWindow(QMainWindow):
         # Si hubo un error, el mensaje ya se mostró en _on_translation_task_error
         # Si la tarea fue exitosa, el mensaje de "Completada" se mostró en _on_translation_task_finished
         # Si no hubo errores y la tarea fue exitosa, mostramos "Tarea completada."
-        current_output_text = self.output_text_edit.toPlainText()
-        if current_output_text.startswith(self.tr("Error in task:")): # Comparar con el texto traducido
+        if self.output_text_edit.toPlainText().startswith("Error en tarea:"):
              # Si el texto de salida es un error, mantenemos ese mensaje en la barra de estado por un tiempo
-             self._set_ui_busy_state(False, current_output_text) # Mostrar el error en la barra de estado
+             current_error_msg = self.output_text_edit.toPlainText()
+             self._set_ui_busy_state(False, current_error_msg) # Mostrar el error en la barra de estado
         else:
              # Si no hubo error, la tarea fue exitosa
-             self._set_ui_busy_state(False, self.tr("Task completed.")) # Usar self.tr()
+             self._set_ui_busy_state(False, "Tarea completada.")
 
         # Restaurar el cursor
         QApplication.restoreOverrideCursor()
@@ -1001,8 +1021,7 @@ class MainWindow(QMainWindow):
         Asegura que el listener de hotkeys y el hilo de traducción estándar se detengan limpiamente.
         """
         print("UI Layer: Evento de cierre de ventana detectado.")
-        # Usar self.tr() para el mensaje
-        self.statusBar.showMessage(self.tr("Closing application..."), 0)
+        self.statusBar.showMessage("Cerrando aplicación...", 0)
         QApplication.processEvents()
 
         # Detener el listener de hotkeys (ya conectado a aboutToQuit en main.py)
@@ -1036,24 +1055,23 @@ class MainWindow(QMainWindow):
         target_language: Language = self.target_lang_combo.currentData()
 
         if not source_language or not target_language:
-            # Usar self.tr() para el mensaje
-            self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
+            self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
             return
 
         # Verificar si hay un hilo de traducción/OCR activo
         if self._current_translation_thread is not None and self._current_translation_thread.is_alive():
             print("UI Layer: Hilo de traducción/OCR ocupado. Espere a que termine la tarea actual.")
-            self.statusBar.showMessage(self.tr("Previous task still in progress. Please wait."), 3000) # Usar self.tr()
+            self.statusBar.showMessage("Tarea anterior aún en proceso. Espere.", 3000)
             return
 
         # Verificar si el selector ya está activo (prevenir múltiples instancias)
         if self._selector_completion_timer is not None and self._selector_completion_timer.isActive():
              print("UI Layer: Selector de región ya activo. Espere a que termine.")
-             self.statusBar.showMessage(self.tr("Screen selector is already active."), 3000) # Usar self.tr()
+             self.statusBar.showMessage("Selector de región ya activo.", 3000)
              return
 
-        # Indicar inicio de tarea (solo para el selector) (usar self.tr())
-        self.statusBar.showMessage(self.tr("Preparing screen selector..."), 0)
+        # Indicar inicio de tarea (solo para el selector)
+        self.statusBar.showMessage("Preparando selector de región...", 0)
         QApplication.processEvents() # Procesar eventos para actualizar la UI inmediatamente
 
 
@@ -1062,8 +1080,7 @@ class MainWindow(QMainWindow):
             desktop_geometry = _get_virtual_desktop_physical_geometry()
 
             if desktop_geometry is None:
-                # Usar self.tr() para el mensaje de error
-                error_msg = self.tr("Could not get virtual desktop geometry for selector.")
+                error_msg = "No se pudo obtener la geometría del escritorio virtual para el selector."
                 print(f"UI Layer Error: {error_msg}")
                 self.output_text_edit.setText(error_msg)
                 self.statusBar.showMessage(error_msg, 5000)
@@ -1090,8 +1107,7 @@ class MainWindow(QMainWindow):
 
 
         except Exception as e:
-            # Usar self.tr() para el mensaje de error
-            error_msg = self.tr("Unexpected error launching screen selector: %s") % e
+            error_msg = f"Error inesperado al lanzar el selector de región: {e}"
             print(f"UI Layer: {error_msg}")
             self.output_text_edit.setText(error_msg)
             self.statusBar.showMessage(error_msg, 5000)
@@ -1120,8 +1136,7 @@ class MainWindow(QMainWindow):
 
             # Verificar si hubo un error en el hilo del selector Tkinter
             if _tkinter_capture_error:
-                 # Usar self.tr() para el mensaje de error
-                 error_msg = self.tr("Error during selection/capture: %s") % _tkinter_capture_error
+                 error_msg = f"Error durante la selección/captura: {_tkinter_capture_error}"
                  print(f"UI Layer Error: {error_msg}")
                  self.output_text_edit.setText(error_msg)
                  self.statusBar.showMessage(error_msg, 5000)
@@ -1132,8 +1147,7 @@ class MainWindow(QMainWindow):
             # Verificar si la selección fue válida (start_x NO es None)
             if _tkinter_start_x is None or _tkinter_end_x is None or _tkinter_start_y is None or _tkinter_end_y is None:
                  print("UI Layer: Selección de región cancelada o inválida.")
-                 # Usar self.tr() para el mensaje
-                 self.statusBar.showMessage(self.tr("Region selection cancelled or invalid."), 3000)
+                 self.statusBar.showMessage("Selección de región cancelada o inválida.", 3000)
                  # Limpiar coordenadas globales después de usarlas
                  _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
                  return # Salir si se canceló o fue inválida
@@ -1142,8 +1156,7 @@ class MainWindow(QMainWindow):
             # Verificar que el archivo de captura existe.
             image_path = _tkinter_captured_image_path
             if not os.path.exists(image_path):
-                 # Usar self.tr() para el mensaje de error
-                 error_msg = self.tr("Error: Captured image file not found: %s") % image_path
+                 error_msg = f"Error: No se encontró el archivo de imagen capturada: {image_path}"
                  print(f"UI Layer Error: {error_msg}")
                  self.output_text_edit.setText(error_msg)
                  self.statusBar.showMessage(error_msg, 5000)
@@ -1167,8 +1180,7 @@ class MainWindow(QMainWindow):
             target_language: Language = self.target_lang_combo.currentData()
 
             if not source_language or not target_language:
-                # Usar self.tr() para el mensaje
-                self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
+                self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
                 # Limpiar coordenadas globales después de usarlas
                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
                 # Opcional: Eliminar el archivo de captura si no se va a procesar
@@ -1178,8 +1190,8 @@ class MainWindow(QMainWindow):
                 return
 
 
-            # Indicar inicio de tarea de OCR y traducción (usar self.tr())
-            self._translation_result_emitter.task_started.emit(self.tr("Loading captured image, performing OCR and Translating..."))
+            # Indicar inicio de tarea de OCR y traducción
+            self._translation_result_emitter.task_started.emit("Cargando imagen capturada, realizando OCR y Traduciendo...")
 
             pil_image = None
             try:
@@ -1188,8 +1200,7 @@ class MainWindow(QMainWindow):
                 print(f"UI Layer: Imagen capturada cargada con PIL desde {image_path}.")
 
             except Exception as e:
-                # Usar self.tr() para el mensaje de error
-                error_msg = self.tr("Error loading captured image with PIL: %s") % e
+                error_msg = f"Error al cargar la imagen capturada con PIL: {e}"
                 print(f"UI Layer Error: {error_msg}")
                 # Emitir error
                 self._translation_result_emitter.error_occurred.emit(error_msg)
@@ -1275,7 +1286,7 @@ class MainWindow(QMainWindow):
         # Si ya hay un hilo activo, no iniciar uno nuevo
         if self._current_translation_thread is not None and self._current_translation_thread.is_alive():
             print("UI Layer: Hilo de traducción ocupado. Espere a que termine la tarea actual.")
-            self.statusBar.showMessage(self.tr("Previous task still in progress. Please wait."), 3000) # Usar self.tr()
+            self.statusBar.showMessage("Tarea anterior aún en proceso. Espere.", 3000)
             return
 
         print("UI Layer: Creando nuevo hilo estándar para tarea de traducción.")
@@ -1322,9 +1333,7 @@ class MainWindow(QMainWindow):
         Muestra el error en el área de texto de salida y la barra de estado.
         """
         print(f"UI Layer: Señal de error de tarea de traducción/OCR recibida desde hilo estándar: {error_message}")
-        # Usar self.tr() para el mensaje de error
-        translated_error_message = self.tr("Error in task: %s") % error_message
-        self.output_text_edit.setText(translated_error_message)
+        self.output_text_edit.setText(f"Error en tarea de traducción/OCR: {error_message}")
         # El estado de "Listo" con el mensaje de error se establecerá en _on_translation_task_completed
         # self.statusBar.showMessage(f"Error en tarea: {error_message}", 5000) # Ya se maneja en _on_translation_task_completed
 
@@ -1344,14 +1353,13 @@ class MainWindow(QMainWindow):
         # Si hubo un error, el mensaje ya se mostró en _on_translation_task_error
         # Si la tarea fue exitosa, el mensaje de "Completada" se mostró en _on_translation_task_finished
         # Si no hubo errores y la tarea fue exitosa, mostramos "Tarea completada."
-        current_output_text = self.output_text_edit.toPlainText()
-        # Usar self.tr() para comparar con el texto traducido del error
-        if current_output_text.startswith(self.tr("Error in task:")):
+        if self.output_text_edit.toPlainText().startswith("Error en tarea:"):
              # Si el texto de salida es un error, mantenemos ese mensaje en la barra de estado por un tiempo
-             self._set_ui_busy_state(False, current_output_text) # Mostrar el error en la barra de estado
+             current_error_msg = self.output_text_edit.toPlainText()
+             self._set_ui_busy_state(False, current_error_msg) # Mostrar el error en la barra de estado
         else:
              # Si no hubo error, la tarea fue exitosa
-             self._set_ui_busy_state(False, self.tr("Task completed.")) # Usar self.tr()
+             self._set_ui_busy_state(False, "Tarea completada.")
 
         # Restaurar el cursor
         QApplication.restoreOverrideCursor()
@@ -1363,8 +1371,7 @@ class MainWindow(QMainWindow):
         Asegura que el listener de hotkeys y el hilo de traducción estándar se detengan limpiamente.
         """
         print("UI Layer: Evento de cierre de ventana detectado.")
-        # Usar self.tr() para el mensaje
-        self.statusBar.showMessage(self.tr("Closing application..."), 0)
+        self.statusBar.showMessage("Cerrando aplicación...", 0)
         QApplication.processEvents()
 
         # Detener el listener de hotkeys (ya conectado a aboutToQuit en main.py)
@@ -1381,201 +1388,3 @@ class MainWindow(QMainWindow):
 
         print("UI Layer: Aceptando evento de cierre.")
         event.accept()
-
-    # --- Slot para Captura de Pantalla y OCR (Lanza el selector Tkinter en hilo) ---
-    @Slot()
-    def on_capture_screen_button_clicked(self):
-        """
-        Slot para el botón 'Capturar Pantalla y Traducir'.
-        Oculta la ventana principal, obtiene la geometría del escritorio virtual,
-        y lanza el selector de región de Tkinter en un hilo separado.
-        Inicia un timer para verificar la finalización del selector.
-        """
-        print("UI Layer: 'Capturar Pantalla y Traducir' button clicked.")
-
-        # Obtener los idiomas seleccionados para la traducción antes de ocultar la ventana
-        source_language: Language = self.source_lang_combo.currentData()
-        target_language: Language = self.target_lang_combo.currentData()
-
-        if not source_language or not target_language:
-            # Usar self.tr() para el mensaje
-            self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
-            return
-
-        # Verificar si hay un hilo de traducción/OCR activo
-        if self._current_translation_thread is not None and self._current_translation_thread.is_alive():
-            print("UI Layer: Hilo de traducción/OCR ocupado. Espere a que termine la tarea actual.")
-            self.statusBar.showMessage(self.tr("Previous task still in progress. Please wait."), 3000) # Usar self.tr()
-            return
-
-        # Verificar si el selector ya está activo (prevenir múltiples instancias)
-        if self._selector_completion_timer is not None and self._selector_completion_timer.isActive():
-             print("UI Layer: Selector de región ya activo. Espere a que termine.")
-             self.statusBar.showMessage(self.tr("Screen selector is already active."), 3000) # Usar self.tr()
-             return
-
-        # Indicar inicio de tarea (solo para el selector) (usar self.tr())
-        self.statusBar.showMessage(self.tr("Preparing screen selector..."), 0)
-        QApplication.processEvents() # Procesar eventos para actualizar la UI inmediatamente
-
-
-        try:
-            # Obtener la geometría física del escritorio virtual usando PySide
-            desktop_geometry = _get_virtual_desktop_physical_geometry()
-
-            if desktop_geometry is None:
-                # Usar self.tr() para el mensaje de error
-                error_msg = self.tr("Could not get virtual desktop geometry for selector.")
-                print(f"UI Layer Error: {error_msg}")
-                self.output_text_edit.setText(error_msg)
-                self.statusBar.showMessage(error_msg, 5000)
-                return
-
-            # Ocultar la ventana principal antes de mostrar el selector
-            self.hide()
-
-            # Lanzar el selector de Tkinter en un hilo separado
-            print("UI Layer: Lanzando selector Tkinter en hilo separado.")
-            selector_thread = threading.Thread(
-                target=_run_tkinter_selector,
-                args=(desktop_geometry,),
-                daemon=True # Permite que el hilo se cierre con la aplicación principal
-            )
-            selector_thread.start()
-
-            # Iniciar un QTimer para verificar periódicamente si el selector Tkinter ha terminado
-            # Usamos un timer porque no podemos hacer join() en el hilo de la UI
-            self._selector_completion_timer = QTimer(self)
-            self._selector_completion_timer.timeout.connect(self._check_selector_completion)
-            self._selector_completion_timer.start(100) # Verificar cada 100 ms
-            print("UI Layer: QTimer iniciado para verificar finalización del selector.")
-
-
-        except Exception as e:
-            # Usar self.tr() para el mensaje de error
-            error_msg = self.tr("Unexpected error launching screen selector: %s") % e
-            print(f"UI Layer: {error_msg}")
-            self.output_text_edit.setText(error_msg)
-            self.statusBar.showMessage(error_msg, 5000)
-            # Asegurarse de mostrar la ventana principal de nuevo si algo falla antes de mostrar el selector
-            if not self.isVisible():
-                self.show()
-
-    @Slot()
-    def _check_selector_completion(self):
-        """
-        Slot llamado por el QTimer para verificar si el selector Tkinter ha terminado.
-        Si terminó, detiene el timer y procesa la captura.
-        """
-        global _tkinter_start_x, _tkinter_start_y, _tkinter_end_x, _tkinter_end_y
-        global _tkinter_selection_complete, _tkinter_capture_error, _tkinter_captured_image_path
-
-        # Verificar si el evento de finalización está seteado
-        if _tkinter_selection_complete.is_set():
-            # Detener el timer
-            self._selector_completion_timer.stop()
-            print("UI Layer: Selector Tkinter finalizado. QTimer detenido.")
-
-            # Mostrar la ventana principal de nuevo
-            self.show()
-            self.activateWindow() # Asegurarse de que la ventana principal tenga el foco
-
-            # Verificar si hubo un error en el hilo del selector Tkinter
-            if _tkinter_capture_error:
-                 # Usar self.tr() para el mensaje de error
-                 error_msg = self.tr("Error during selection/capture: %s") % _tkinter_capture_error
-                 print(f"UI Layer Error: {error_msg}")
-                 self.output_text_edit.setText(error_msg)
-                 self.statusBar.showMessage(error_msg, 5000)
-                 # Limpiar coordenadas globales después de usarlas
-                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-                 return # Salir si hubo error
-
-            # Verificar si la selección fue válida (start_x NO es None)
-            if _tkinter_start_x is None or _tkinter_end_x is None or _tkinter_start_y is None or _tkinter_end_y is None:
-                 print("UI Layer: Selección de región cancelada o inválida.")
-                 # Usar self.tr() para el mensaje
-                 self.statusBar.showMessage(self.tr("Region selection cancelled or invalid."), 3000)
-                 # Limpiar coordenadas globales después de usarlas
-                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-                 return # Salir si se canceló o fue inválida
-
-
-            # Verificar que el archivo de captura existe.
-            image_path = _tkinter_captured_image_path
-            if not os.path.exists(image_path):
-                 # Usar self.tr() para el mensaje de error
-                 error_msg = self.tr("Error: Captured image file not found: %s") % image_path
-                 print(f"UI Layer Error: {error_msg}")
-                 self.output_text_edit.setText(error_msg)
-                 self.statusBar.showMessage(error_msg, 5000)
-                 # Limpiar coordenadas globales después de usarlas
-                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-                 # Intentar limpiar el archivo si existe (aunque no debería si no se creó)
-                 if os.path.exists(image_path):
-                     try: os.remove(image_path)
-                     except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
-                 return # Salir si no se encontró el archivo
-
-
-            # --- Procesar la captura ---
-            # Las coordenadas (_tkinter_start_x, _tkinter_start_y, _tkinter_end_x, _tkinter_end_y)
-            # son las coordenadas de píxeles físicos obtenidas del hilo Tkinter.
-            # mss ya guardó la imagen en "captura_pil.png".
-
-
-            # Obtener los idiomas seleccionados para la traducción
-            source_language: Language = self.source_lang_combo.currentData()
-            target_language: Language = self.target_lang_combo.currentData()
-
-            if not source_language or not target_language:
-                # Usar self.tr() para el mensaje
-                self.statusBar.showMessage(self.tr("Please select source and target languages."), 3000)
-                # Limpiar coordenadas globales después de usarlas
-                _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-                # Opcional: Eliminar el archivo de captura si no se va a procesar
-                if os.path.exists(image_path):
-                    try: os.remove(image_path)
-                    except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
-                return
-
-
-            # Indicar inicio de tarea de OCR y traducción (usar self.tr())
-            self._translation_result_emitter.task_started.emit(self.tr("Loading captured image, performing OCR and Translating..."))
-
-            pil_image = None
-            try:
-                # Cargar la imagen capturada desde el archivo temporal (_tkinter_captured_image_path)
-                pil_image = Image.open(image_path)
-                print(f"UI Layer: Imagen capturada cargada con PIL desde {image_path}.")
-
-            except Exception as e:
-                # Usar self.tr() para el mensaje de error
-                error_msg = self.tr("Error loading captured image with PIL: %s") % e
-                print(f"UI Layer Error: {error_msg}")
-                # Emitir error
-                self._translation_result_emitter.error_occurred.emit(error_msg)
-                # Asegurar que el estado de ocupado se desactive
-                self._translation_result_emitter.task_finished.emit()
-                # Limpiar coordenadas globales después de usarlas
-                _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-                # Asegurarse de eliminar el archivo si no se pudo cargar
-                if os.path.exists(image_path):
-                    try: os.remove(image_path)
-                    except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
-                return # Salir si no se pudo cargar la imagen
-
-
-            # Limpiar coordenadas globales después de usarlas
-            _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
-
-            # Llamar al servicio de aplicación para realizar OCR y traducción
-            # Ejecutamos en un hilo estándar para no bloquear la UI
-            self._start_translation_task( # Usamos el método genérico del hilo estándar
-                self.translator_service.perform_ocr_and_translate,
-                pil_image, # Pasamos el objeto PIL Image
-                source_language.code,
-                target_language.code,
-                # Pasar la ruta del archivo temporal para limpieza en el hilo de traducción
-                temp_file_path=image_path
-            )
