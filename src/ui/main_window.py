@@ -44,6 +44,8 @@ except ImportError:
     Document = None
     print("Advertencia: La biblioteca 'python-docx' no está instalada. No se podrán leer archivos .docx.")
 
+# Importa el servicio TTS
+from src.infrastructure.tts_service import Pyttsx3TTSService
 
 # --- Intentar configurar el DPI awareness del proceso lo antes posible ---
 # Esto es crucial para intentar que las coordenadas de PySide, Tkinter y PIL/mss sean consistentes.
@@ -298,6 +300,8 @@ class MainWindow(QMainWindow):
 
         self.active_popups = []  # lista para mantener referencias a los pop-ups activos
 
+        self.tts_service = Pyttsx3TTSService()
+
         if not isinstance(translator_service, TranslatorService):
              raise TypeError("translator_service must be an instance of TranslatorService")
 
@@ -366,7 +370,14 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(screen_capture_layout)
         # --- Fin Nuevo botón ---
 
+        self.tts_button = QPushButton("Leer Traducción en Voz")
+        main_layout.addWidget(self.tts_button)
 
+        # Conecta el botón al método que manejará el TTS
+        self.tts_button.clicked.connect(self.on_tts_button_clicked)
+        # --- Fin botón TTS ---
+
+        # Área de texto para introducir el texto a traducir
         self.input_text_edit = QTextEdit()
         self.input_text_edit.setPlaceholderText("Introduce el texto a traducir aquí o usa las opciones de OCR/Archivo...")
         main_layout.addWidget(self.input_text_edit)
@@ -1587,3 +1598,22 @@ class MainWindow(QMainWindow):
                 # Pasar la ruta del archivo temporal para limpieza en el hilo de traducción
                 temp_file_path=image_path
             )
+    
+    @Slot()
+    def on_tts_button_clicked(self):
+        """
+        Slot para el botón 'Leer Traducción en Voz'.
+        Reproduce el texto traducido usando el servicio TTS.
+        """
+        translated_text = self.output_text_edit.toPlainText()
+        if not translated_text:
+            self.statusBar.showMessage("No hay texto traducido para leer.", 3000)
+            return
+
+        try:
+            self.tts_service.speak(translated_text)
+            self.statusBar.showMessage("Reproduciendo texto en voz...", 3000)
+        except Exception as e:
+            error_msg = f"Error al reproducir texto en voz: {e}"
+            print(f"UI Layer Error: {error_msg}")
+            self.statusBar.showMessage(error_msg, 5000)
