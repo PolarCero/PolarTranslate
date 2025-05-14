@@ -10,9 +10,9 @@ from PySide6.QtWidgets import (
 )
 # Importamos QObject, Signal, Slot, QCoreApplication, QBuffer, QByteArray de PySide6.QtCore
 # Importamos QRect
-from PySide6.QtCore import Qt, Signal, Slot, QObject, QCoreApplication, QBuffer, QByteArray, QRect, QTimer
+from PySide6.QtCore import Qt, Signal, Slot, QObject, QCoreApplication, QBuffer, QByteArray, QRect, QTimer, QPoint # Añadimos QPoint para la posición del cursor
 # Importamos QGuiApplication, QClipboard, QPixmap, QScreen de PySide6.QtGui
-from PySide6.QtGui import QGuiApplication, QClipboard, QPixmap, QScreen
+from PySide6.QtGui import QGuiApplication, QClipboard, QPixmap, QScreen, QCursor # Añadimos QCursor
 from PIL import Image # Necesario para manejar imágenes para OCR
 import io # Necesario para trabajar con bytes de imagen
 import os # Para obtener la extensión del archivo
@@ -295,6 +295,8 @@ class MainWindow(QMainWindow):
         Constructor de la ventana principal.
         """
         super().__init__()
+
+        self.active_popups = []  # lista para mantener referencias a los pop-ups activos
 
         if not isinstance(translator_service, TranslatorService):
              raise TypeError("translator_service must be an instance of TranslatorService")
@@ -596,20 +598,25 @@ class MainWindow(QMainWindow):
     # --- Slots para Hotkeys (existente, modificado para usar pop-up) ---
     @Slot(TranslationResult)
     def on_hotkey_translation_finished(self, result: TranslationResult):
-        """
-        Slot que se ejecuta cuando se recibe la señal de traducción de portapapeles finalizada.
-        Muestra el resultado en una ventana pop-up.
-        """
         print("UI Layer: Señal de traducción de portapapeles recibida.")
-        # Asegurarse de que el resultado es un TranslationResult
+        
         if not isinstance(result, TranslationResult):
-             print(f"UI Layer Error: Resultado de hotkey inesperado: {type(result).__name__}")
-             self.statusBar.showMessage(f"Error hotkey: Resultado inesperado.", 5000)
-             return
+            print(f"UI Layer Error: Resultado de hotkey inesperado: {type(result).__name__}")
+            self.statusBar.showMessage(f"Error hotkey: Resultado inesperado.", 5000)
+            return
 
         if result.is_successful:
-            pop_up = PopUpTranslationWindow(result.translated_text, self)
+            pop_up = PopUpTranslationWindow(result.translated_text)
+            pop_up.setAttribute(Qt.WA_DeleteOnClose)  # se eliminará al cerrar
+            #pop_up.set_always_on_top(True)  # o False si no quieres que lo esté siempre
             pop_up.show()
+
+            # Guardar referencia para evitar que Python la destruya prematuramente
+            self.active_popups.append(pop_up)
+
+            # Eliminar de la lista cuando se cierre
+            pop_up.destroyed.connect(lambda: self.active_popups.remove(pop_up))
+
             self.statusBar.showMessage("Traducción por hotkey completada.", 3000)
         else:
             error_message = f"Error (Hotkey): {result.error}"
@@ -782,6 +789,8 @@ class MainWindow(QMainWindow):
         file_dialog.setWindowTitle("Seleccionar archivo de texto para traducir")
         file_dialog.setNameFilter("Archivos de Texto (*.txt *.doc *.docx);;Todos los archivos (*.*)")
         file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setDirectory(os.path.expanduser("~")) # Abrir en el directorio de inicio por defecto
+
 
         if file_dialog.exec():
             selected_files = file_dialog.selectedFiles()
@@ -1388,3 +1397,193 @@ class MainWindow(QMainWindow):
 
         print("UI Layer: Aceptando evento de cierre.")
         event.accept()
+
+    # --- Slot para Captura de Pantalla y OCR (Lanza el selector Tkinter en hilo) ---
+    @Slot()
+    def on_capture_screen_button_clicked(self):
+        """
+        Slot para el botón 'Capturar Pantalla y Traducir'.
+        Oculta la ventana principal, obtiene la geometría del escritorio virtual,
+        y lanza el selector de región de Tkinter en un hilo separado.
+        Inicia un timer para verificar la finalización del selector.
+        """
+        print("UI Layer: 'Capturar Pantalla y Traducir' button clicked.")
+
+        # Obtener los idiomas seleccionados para la traducción antes de ocultar la ventana
+        source_language: Language = self.source_lang_combo.currentData()
+        target_language: Language = self.target_lang_combo.currentData()
+
+        if not source_language or not target_language:
+            self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
+            return
+
+        # Verificar si hay un hilo de traducción/OCR activo
+        if self._current_translation_thread is not None and self._current_translation_thread.is_alive():
+            print("UI Layer: Hilo de traducción/OCR ocupado. Espere a que termine la tarea actual.")
+            self.statusBar.showMessage("Tarea anterior aún en proceso. Espere.", 3000)
+            return
+
+        # Verificar si el selector ya está activo (prevenir múltiples instancias)
+        if self._selector_completion_timer is not None and self._selector_completion_timer.isActive():
+             print("UI Layer: Selector de región ya activo. Espere a que termine.")
+             self.statusBar.showMessage("Selector de región ya activo.", 3000)
+             return
+
+        # Indicar inicio de tarea (solo para el selector)
+        self.statusBar.showMessage("Preparando selector de región...", 0)
+        QApplication.processEvents() # Procesar eventos para actualizar la UI inmediatamente
+
+
+        try:
+            # Obtener la geometría física del escritorio virtual usando PySide
+            desktop_geometry = _get_virtual_desktop_physical_geometry()
+
+            if desktop_geometry is None:
+                error_msg = "No se pudo obtener la geometría del escritorio virtual para el selector."
+                print(f"UI Layer Error: {error_msg}")
+                self.output_text_edit.setText(error_msg)
+                self.statusBar.showMessage(error_msg, 5000)
+                return
+
+            # Ocultar la ventana principal antes de mostrar el selector
+            self.hide()
+
+            # Lanzar el selector de Tkinter en un hilo separado
+            print("UI Layer: Lanzando selector Tkinter en hilo separado.")
+            selector_thread = threading.Thread(
+                target=_run_tkinter_selector,
+                args=(desktop_geometry,),
+                daemon=True # Permite que el hilo se cierre con la aplicación principal
+            )
+            selector_thread.start()
+
+            # Iniciar un QTimer para verificar periódicamente si el selector Tkinter ha terminado
+            # Usamos un timer porque no podemos hacer join() en el hilo de la UI
+            self._selector_completion_timer = QTimer(self)
+            self._selector_completion_timer.timeout.connect(self._check_selector_completion)
+            self._selector_completion_timer.start(100) # Verificar cada 100 ms
+            print("UI Layer: QTimer iniciado para verificar finalización del selector.")
+
+
+        except Exception as e:
+            error_msg = f"Error inesperado al lanzar el selector de región: {e}"
+            print(f"UI Layer: {error_msg}")
+            self.output_text_edit.setText(error_msg)
+            self.statusBar.showMessage(error_msg, 5000)
+            # Asegurarse de mostrar la ventana principal de nuevo si algo falla antes de mostrar el selector
+            if not self.isVisible():
+                self.show()
+
+    @Slot()
+    def _check_selector_completion(self):
+        """
+        Slot llamado por el QTimer para verificar si el selector Tkinter ha terminado.
+        Si terminó, detiene el timer y procesa la captura.
+        """
+        global _tkinter_start_x, _tkinter_start_y, _tkinter_end_x, _tkinter_end_y
+        global _tkinter_selection_complete, _tkinter_capture_error, _tkinter_captured_image_path
+
+        # Verificar si el evento de finalización está seteado
+        if _tkinter_selection_complete.is_set():
+            # Detener el timer
+            self._selector_completion_timer.stop()
+            print("UI Layer: Selector Tkinter finalizado. QTimer detenido.")
+
+            # Mostrar la ventana principal de nuevo
+            self.show()
+            self.activateWindow() # Asegurarse de que la ventana principal tenga el foco
+
+            # Verificar si hubo un error en el hilo del selector Tkinter
+            if _tkinter_capture_error:
+                 error_msg = f"Error durante la selección/captura: {_tkinter_capture_error}"
+                 print(f"UI Layer Error: {error_msg}")
+                 self.output_text_edit.setText(error_msg)
+                 self.statusBar.showMessage(error_msg, 5000)
+                 # Limpiar coordenadas globales después de usarlas
+                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+                 return # Salir si hubo error
+
+            # Verificar si la selección fue válida (start_x NO es None)
+            if _tkinter_start_x is None or _tkinter_end_x is None or _tkinter_start_y is None or _tkinter_end_y is None:
+                 print("UI Layer: Selección de región cancelada o inválida.")
+                 self.statusBar.showMessage("Selección de región cancelada o inválida.", 3000)
+                 # Limpiar coordenadas globales después de usarlas
+                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+                 return # Salir si se canceló o fue inválida
+
+
+            # Verificar que el archivo de captura existe.
+            image_path = _tkinter_captured_image_path
+            if not os.path.exists(image_path):
+                 error_msg = f"Error: No se encontró el archivo de imagen capturada: {image_path}"
+                 print(f"UI Layer Error: {error_msg}")
+                 self.output_text_edit.setText(error_msg)
+                 self.statusBar.showMessage(error_msg, 5000)
+                 # Limpiar coordenadas globales después de usarlas
+                 _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+                 # Intentar limpiar el archivo si existe (aunque no debería si no se creó)
+                 if os.path.exists(image_path):
+                     try: os.remove(image_path)
+                     except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
+                 return # Salir si no se encontró el archivo
+
+
+            # --- Procesar la captura ---
+            # Las coordenadas (_tkinter_start_x, _tkinter_start_y, _tkinter_end_x, _tkinter_end_y)
+            # son las coordenadas de píxeles físicos obtenidas del hilo Tkinter.
+            # mss ya guardó la imagen en "captura_pil.png".
+
+
+            # Obtener los idiomas seleccionados para la traducción
+            source_language: Language = self.source_lang_combo.currentData()
+            target_language: Language = self.target_lang_combo.currentData()
+
+            if not source_language or not target_language:
+                self.statusBar.showMessage("Por favor, selecciona idiomas de origen y destino.", 3000)
+                # Limpiar coordenadas globales después de usarlas
+                _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+                # Opcional: Eliminar el archivo de captura si no se va a procesar
+                if os.path.exists(image_path):
+                    try: os.remove(image_path)
+                    except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
+                return
+
+
+            # Indicar inicio de tarea de OCR y traducción
+            self._translation_result_emitter.task_started.emit("Cargando imagen capturada, realizando OCR y Traduciendo...")
+
+            pil_image = None
+            try:
+                # Cargar la imagen capturada desde el archivo temporal (_tkinter_captured_image_path)
+                pil_image = Image.open(image_path)
+                print(f"UI Layer: Imagen capturada cargada con PIL desde {image_path}.")
+
+            except Exception as e:
+                error_msg = f"Error al cargar la imagen capturada con PIL: {e}"
+                print(f"UI Layer Error: {error_msg}")
+                # Emitir error
+                self._translation_result_emitter.error_occurred.emit(error_msg)
+                # Asegurar que el estado de ocupado se desactive
+                self._translation_result_emitter.task_finished.emit()
+                # Limpiar coordenadas globales después de usarlas
+                _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+                # Asegurarse de eliminar el archivo si no se pudo cargar
+                if os.path.exists(image_path):
+                    try: os.remove(image_path)
+                    except Exception as e: print(f"UI Layer Error: Failed to clean up {image_path}: {e}")
+                return # Salir si no se pudo cargar la imagen
+
+
+            # Limpiar coordenadas globales después de usarlas
+            _tkinter_start_x = _tkinter_start_y = _tkinter_end_x = _tkinter_end_y = None
+
+            # Llamar al servicio de aplicación para realizar OCR y traducción
+            # Ejecutamos en un hilo estándar para no bloquear la UI
+            self._start_translation_task( # Usamos el método genérico del hilo estándar
+                self.translator_service.perform_ocr_and_translate,
+                pil_image, # Pasamos el objeto PIL Image
+                source_language.code,
+                target_language.code,
+                # Pasar la ruta del archivo temporal para limpieza en el hilo de traducción
+                temp_file_path=image_path
+            )
